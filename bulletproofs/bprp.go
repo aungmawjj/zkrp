@@ -66,7 +66,7 @@ allow generic intervals in the format [A, B) it is necessary to use 2
 BulletProofs, as explained in Section 4.3 from the following paper:
 https://infoscience.epfl.ch/record/128718/files/CCS08.pdf
 */
-func ProveGeneric(secret *big.Int, params *bprp) (ProofBPRP, error) {
+func ProveGeneric(secret *big.Int, params *bprp, seed int64) (ProofBPRP, error) {
     var proof ProofBPRP
 
     // x - b + 2^N
@@ -75,14 +75,14 @@ func ProveGeneric(secret *big.Int, params *bprp) (ProofBPRP, error) {
     xb.Add(xb, p2)
 
     var err1 error
-    proof.P1, err1 = Prove(xb, params.BP1)
+    proof.P1, err1 = Prove(xb, params.BP1, seed)
     if err1 != nil {
         return proof, err1
     }
 
     xa := new(big.Int).Sub(secret, new(big.Int).SetInt64(params.A))
     var err2 error
-    proof.P2, err2 = Prove(xa, params.BP2)
+    proof.P2, err2 = Prove(xa, params.BP2, seed)
     if err2 != nil {
         return proof, err2
     }

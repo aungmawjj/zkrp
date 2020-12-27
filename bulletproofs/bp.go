@@ -18,15 +18,15 @@
 package bulletproofs
 
 import (
-    "crypto/rand"
+    "math/rand"
     "errors"
     "fmt"
     "math"
     "math/big"
 
-    "github.com/ing-bank/zkrp/crypto/p256"
-    . "github.com/ing-bank/zkrp/util"
-    "github.com/ing-bank/zkrp/util/bn"
+    "github.com/aungmawjj/zkrp/crypto/p256"
+    . "github.com/aungmawjj/zkrp/util"
+    "github.com/aungmawjj/zkrp/util/bn"
 )
 
 /*
@@ -90,8 +90,8 @@ func Setup(b int64) (BulletProofSetupParams, error) {
     params.Gg = make([]*p256.P256, params.N)
     params.Hh = make([]*p256.P256, params.N)
     for i := int64(0); i < params.N; i++ {
-        params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + string(i))
-        params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + string(i))
+        params.Gg[i], _ = p256.MapToGroup(SEEDH + "g" + fmt.Sprint(i))
+        params.Hh[i], _ = p256.MapToGroup(SEEDH + "h" + fmt.Sprint(i))
     }
     return params, nil
 }
@@ -101,38 +101,41 @@ Prove computes the ZK rangeproof. The documentation and comments are based on
 eprint version of Bulletproofs papers:
 https://eprint.iacr.org/2017/1066.pdf
 */
-func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, error) {
+func Prove(secret *big.Int, params BulletProofSetupParams, seed int64) (BulletProof, error) {
     var (
         proof BulletProof
     )
+    
+    rand.Seed(seed)
+    
     // ////////////////////////////////////////////////////////////////////////////
     // First phase: page 19
     // ////////////////////////////////////////////////////////////////////////////
 
     // commitment to v and gamma
-    gamma, _ := rand.Int(rand.Reader, ORDER)
+    gamma := big.NewInt(int64(rand.Int()))
     V, _ := CommitG1(secret, gamma, params.H)
 
     // aL, aR and commitment: (A, alpha)
-    aL, _ := Decompose(secret, 2, params.N)                                    // (41)
-    aR, _ := computeAR(aL)                                                     // (42)
-    alpha, _ := rand.Int(rand.Reader, ORDER)                                   // (43)
-    A := commitVector(aL, aR, alpha, params.H, params.Gg, params.Hh, params.N) // (44)
-
-    // sL, sR and commitment: (S, rho)                                     // (45)
-    sL := sampleRandomVector(params.N)
-    sR := sampleRandomVector(params.N)
-    rho, _ := rand.Int(rand.Reader, ORDER)                                      // (46)
+    aL, _ := Decompose(secret, 2, params.N)                                     // (41)
+    aR, _ := computeAR(aL)                                                      // (42)
+    alpha := big.NewInt(int64(rand.Int()))                                           // (43)
+    A := commitVector(aL, aR, alpha, params.H, params.Gg, params.Hh, params.N)  // (44)
+    
+    // sL, sR and commitment: (S, rho)                                          // (45)
+    sL := sampleRandomVector(params.N, seed)
+    sR := sampleRandomVector(params.N, seed)
+    rho := big.NewInt(int64(rand.Int()))                                             // (46)
     S := commitVectorBig(sL, sR, rho, params.H, params.Gg, params.Hh, params.N) // (47)
 
-    // Fiat-Shamir heuristic to compute challenges y and z, corresponds to    (49)
+    // Fiat-Shamir heuristic to compute challenges y and z, corresponds to      // (49)
     y, z, _ := HashBP(A, S)
 
     // ////////////////////////////////////////////////////////////////////////////
     // Second phase: page 20
     // ////////////////////////////////////////////////////////////////////////////
-    tau1, _ := rand.Int(rand.Reader, ORDER) // (52)
-    tau2, _ := rand.Int(rand.Reader, ORDER) // (52)
+    tau1 := big.NewInt(int64(rand.Int())) // (52)
+    tau2 := big.NewInt(int64(rand.Int())) // (52)
 
     /*
        The paper does not describe how to compute t1 and t2.
@@ -216,12 +219,12 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, error) 
 
     // SetupInnerProduct Inner Product (Section 4.2)
     var setupErr error
-    params.InnerProductParams, setupErr = setupInnerProduct(params.H, params.Gg, hprime, tprime, params.N)
+    params.InnerProductParams, setupErr = SetupInnerProduct(params.H, params.Gg, hprime, tprime, params.N)
     if setupErr != nil {
         return proof, setupErr
     }
-    commit := commitInnerProduct(params.Gg, hprime, bl, br)
-    proofip, _ := proveInnerProduct(bl, br, commit, params.InnerProductParams)
+    commit := CommitInnerProduct(params.Gg, hprime, bl, br)
+    proofip, _ := ProveInnerProduct(bl, br, commit, params.InnerProductParams)
 
     proof.V = V
     proof.A = A
@@ -336,10 +339,11 @@ func (proof *BulletProof) Verify() (bool, error) {
 /*
 SampleRandomVector generates a vector composed by random big numbers.
 */
-func sampleRandomVector(N int64) []*big.Int {
+func sampleRandomVector(N int64, seed int64) []*big.Int {
+    rand.Seed(seed)
     s := make([]*big.Int, N)
     for i := int64(0); i < N; i++ {
-        s[i], _ = rand.Int(rand.Reader, ORDER)
+        s[i] = big.NewInt(int64(rand.Int()))
     }
     return s
 }

@@ -27,8 +27,8 @@ import (
     "math/big"
     "strconv"
 
-    "github.com/ing-bank/zkrp/util/bn"
-    "github.com/ing-bank/zkrp/util/byteconversion"
+    "github.com/aungmawjj/zkrp/util/bn"
+    "github.com/aungmawjj/zkrp/util/byteconversion"
 )
 
 var (
@@ -52,6 +52,19 @@ func (p *P256) IsZero() bool {
         return p.X.Cmp(z) == 0 && p.Y.Cmp(z) == 0
     }
     return true
+}
+
+func (p *P256) Equals(q *P256) bool {
+    return p.X.Cmp(q.X) == 0 && p.Y.Cmp(q.Y) == 0
+}
+
+func (e *P256) Copy() *P256 {
+    var xx big.Int
+    var yy big.Int
+    xx.Set(e.X)
+    yy.Set(e.Y)
+    f := P256{&xx, &yy}
+    return &f
 }
 
 /*

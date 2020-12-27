@@ -41,6 +41,19 @@ func (e *gfP2) String() string {
     return "(" + x.String() + "," + y.String() + ")"
 }
 
+func (e *gfP2) Equals(f *gfP2) bool {
+    return e.x.Cmp(f.x) == 0 && e.y.Cmp(f.y) == 0
+}
+
+func (e *gfP2) Copy() *gfP2 {
+    var xx big.Int
+    var yy big.Int
+    xx.Set(e.x)
+    yy.Set(e.y)
+    f := gfP2{&xx, &yy}
+    return &f
+}
+
 func (e *gfP2) Put(pool *bnPool) {
     pool.Put(e.x)
     pool.Put(e.y)

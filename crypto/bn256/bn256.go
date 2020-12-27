@@ -220,6 +220,16 @@ func (g *G2) String() string {
     return "bn256.G2" + g.p.String()
 }
 
+func (g *G2) Equals(h *G2) bool {
+    return g.p.Equals(h.p)
+}
+
+func (g *G2) Copy() *G2 {
+    h := new(G2)
+    h.p = g.p.Copy()
+    return h
+}
+
 // CurvePoints returns the curve points of p which includes the real
 // and imaginary parts of the curve point.
 func (e *G2) CurvePoints() (*gfP2, *gfP2, *gfP2, *gfP2) {

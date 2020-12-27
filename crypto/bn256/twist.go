@@ -20,7 +20,7 @@ package bn256
 import (
     "math/big"
 
-    "github.com/ing-bank/zkrp/util/intconversion"
+    "github.com/aungmawjj/zkrp/util/intconversion"
 )
 
 // twistPoint implements the elliptic curve y²=x³+3/ξ over GF(p²). Points are
@@ -62,6 +62,19 @@ func newTwistPoint(pool *bnPool) *twistPoint {
         newGFp2(pool),
         newGFp2(pool),
     }
+}
+
+func (c *twistPoint) Equals(d *twistPoint) bool {
+    return c.x.Equals(d.x) && c.y.Equals(d.y) && c.z.Equals(d.z) && c.t.Equals(d.t)
+}
+
+func (c *twistPoint) Copy() *twistPoint {
+    d := new(twistPoint)
+    d.x = c.x.Copy()
+    d.y = c.y.Copy()
+    d.z = c.z.Copy()
+    d.t = c.t.Copy()
+    return d
 }
 
 func (c *twistPoint) String() string {
