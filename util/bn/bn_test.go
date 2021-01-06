@@ -18,8 +18,8 @@
 package bn
 
 import (
-    "github.com/aungmawjj/zkrp/util/intconversion"
-    // . "github.com/aungmawjj/zkrp/util"
+    "github.com/ing-bank/zkrp/util/intconversion"
+    // . "github.com/ing-bank/zkrp/util"
     "math/big"
     "testing"
 )

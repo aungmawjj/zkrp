@@ -23,9 +23,9 @@ import (
     "math/big"
     "fmt"
 
-    "github.com/aungmawjj/zkrp/crypto/p256"
-    "github.com/aungmawjj/zkrp/util/bn"
-    "github.com/aungmawjj/zkrp/util/byteconversion"
+    "github.com/ing-bank/zkrp/crypto/p256"
+    "github.com/ing-bank/zkrp/util/bn"
+    "github.com/ing-bank/zkrp/util/byteconversion"
 )
 
 var SEEDU = "BulletproofsDoesNotNeedTrustedSetupU"

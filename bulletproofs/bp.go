@@ -24,9 +24,9 @@ import (
     "math"
     "math/big"
 
-    "github.com/aungmawjj/zkrp/crypto/p256"
-    . "github.com/aungmawjj/zkrp/util"
-    "github.com/aungmawjj/zkrp/util/bn"
+    "github.com/ing-bank/zkrp/crypto/p256"
+    . "github.com/ing-bank/zkrp/util"
+    "github.com/ing-bank/zkrp/util/bn"
 )
 
 /*
@@ -101,10 +101,12 @@ Prove computes the ZK rangeproof. The documentation and comments are based on
 eprint version of Bulletproofs papers:
 https://eprint.iacr.org/2017/1066.pdf
 */
-func Prove(secret *big.Int, params BulletProofSetupParams, seed int64) (BulletProof, error) {
+func Prove(secret *big.Int, params BulletProofSetupParams, gamma *big.Int) (BulletProof, error) {
     var (
         proof BulletProof
     )
+    
+    seed := new(big.Int).Mod(gamma, big.NewInt(^int64(0))).Int64()
     
     rand.Seed(seed)
     
@@ -113,7 +115,6 @@ func Prove(secret *big.Int, params BulletProofSetupParams, seed int64) (BulletPr
     // ////////////////////////////////////////////////////////////////////////////
 
     // commitment to v and gamma
-    gamma := big.NewInt(int64(rand.Int()))
     V, _ := CommitG1(secret, gamma, params.H)
 
     // aL, aR and commitment: (A, alpha)
