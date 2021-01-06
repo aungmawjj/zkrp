@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/aungmawjj/zkrp/bulletproofs"
-	"github.com/aungmawjj/zkrp/crypto/p256"
-	"github.com/aungmawjj/zkrp/merkle"
-	"github.com/aungmawjj/zkrp/util"
+	"github.com/ing-bank/zkrp/bulletproofs"
+	"github.com/ing-bank/zkrp/crypto/p256"
+	"github.com/ing-bank/zkrp/merkle"
+	"github.com/ing-bank/zkrp/util"
 )
 
 type System struct {
