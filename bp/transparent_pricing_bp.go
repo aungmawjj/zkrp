@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"os"
 	"time"
 
 	"github.com/aungmawjj/zkrp/bulletproofs"
@@ -28,6 +29,19 @@ type User struct {
 	commits2 map[int][]byte
 	proofs   map[int][]byte
 	sumProof []byte
+}
+
+type UserJSON struct {
+	Gamma    int64
+	Delta    int64
+	NUsers   int
+	Idx      int
+	Reading  int
+	R        *big.Int
+	Commits1 map[int][]byte
+	Commits2 map[int][]byte
+	Proofs   map[int][]byte
+	SumProof []byte
 }
 
 type Company struct {
@@ -314,18 +328,59 @@ func initialize(n int, gamma int64, delta int64) System {
 
 func main() {
 	//    Sanity()
-	startTime := time.Now().UnixNano()
-	system := initialize(10, 500, 120)
-	system.drawReadings(100)
-	system.shareReadings()
-	shareReadingsTime := time.Now().UnixNano()
-	system.company.processReadings()
-	system.shareProofData()
-	processReadingsTime := time.Now().UnixNano()
-	system.checkProofsAllUsers()
-	checkReadingsTime := time.Now().UnixNano()
-	fmt.Println("sharing:", float64(shareReadingsTime-startTime)/1000000000, "seconds")
-	fmt.Println("processing:", float64(processReadingsTime-shareReadingsTime)/1000000000, "seconds")
-	fmt.Println("checking:", float64(checkReadingsTime-processReadingsTime)/1000000000, "seconds")
-	fmt.Println("total time:", float64(checkReadingsTime-startTime)/1000000000, "seconds")
+	if len(os.Args) < 2 {
+		return
+	}
+	fmt.Println(os.Args[1])
+	if os.Args[1] == "c" {
+		startTime := time.Now().UnixNano()
+		system := initialize(10, 500, 120)
+		system.drawReadings(100)
+		system.shareReadings()
+		shareReadingsTime := time.Now().UnixNano()
+		system.company.processReadings()
+		system.shareProofData()
+		processReadingsTime := time.Now().UnixNano()
+		fmt.Println("sharing:", float64(shareReadingsTime-startTime)/1000000000, "seconds")
+		fmt.Println("processing:", float64(processReadingsTime-shareReadingsTime)/1000000000, "seconds")
+
+		uj := UserJSON{
+			Gamma:    system.users[0].gamma,
+			Delta:    system.users[0].delta,
+			NUsers:   system.users[0].nUsers,
+			Idx:      system.users[0].idx,
+			Reading:  system.users[0].reading,
+			R:        system.users[0].r,
+			Commits1: system.users[0].commits1,
+			Commits2: system.users[0].commits2,
+			Proofs:   system.users[0].proofs,
+			SumProof: system.users[0].sumProof,
+		}
+		f, _ := os.Create("user.json")
+		defer f.Close()
+		e := json.NewEncoder(f)
+		e.Encode(uj)
+	} else if os.Args[1] == "u" {
+		var uj UserJSON
+		f, _ := os.Open("user.json")
+		defer f.Close()
+		d := json.NewDecoder(f)
+		d.Decode(&uj)
+		user := User{
+			gamma:    uj.Gamma,
+			delta:    uj.Delta,
+			nUsers:   uj.NUsers,
+			idx:      uj.Idx,
+			reading:  uj.Reading,
+			r:        uj.R,
+			commits1: uj.Commits1,
+			commits2: uj.Commits2,
+			proofs:   uj.Proofs,
+			sumProof: uj.SumProof,
+		}
+		startTime := time.Now().UnixNano()
+		user.checkProofs()
+		checkReadingsTime := time.Now().UnixNano()
+		fmt.Println("check time:", float64(checkReadingsTime-startTime)/1000000000, "seconds")
+	}
 }
