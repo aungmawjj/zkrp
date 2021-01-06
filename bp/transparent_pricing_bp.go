@@ -334,7 +334,7 @@ func main() {
 	fmt.Println(os.Args[1])
 	if os.Args[1] == "c" {
 		startTime := time.Now().UnixNano()
-		system := initialize(10, 500, 120)
+		system := initialize(100, 500, 120)
 		system.drawReadings(100)
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
