@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/ing-bank/zkrp/bulletproofs"
@@ -74,12 +75,12 @@ func (c *Company) processReadings() {
 	c.sum = 0
 	c.treeRoot = new(merkle.Node).BuildTree(c.readings, c.rs, c.delta)
 	sumR := big.NewInt(int64(0)) // big.NewInt(int64(c.treeRoot.GetNumLeaves() - c.nUsers)) // because all dummies get r = 1
-	psum, _ := bulletproofs.SetupGeneric(c.gamma, c.delta*int64(c.nUsers))
 	for i := 0; i < c.nUsers; i++ {
 		c.sum = c.sum + c.readings[i]
 		sumR = new(big.Int).Add(sumR, c.rs[i])
 	}
 	fmt.Println("sum:", c.sum)
+	psum, _ := bulletproofs.SetupGeneric(c.gamma, c.delta*int64(c.nUsers))
 	proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(c.sum)), psum, sumR)
 	c.sumProof, _ = json.Marshal(proof)
 }
@@ -222,7 +223,9 @@ func main() {
 	fmt.Println(os.Args[1])
 	if os.Args[1] == "c" {
 		startTime := time.Now().UnixNano()
-		system := initialize(100, 400, 120)
+		nUsers, err := strconv.Atoi(os.Args[2])
+		check(err)
+		system := initialize(nUsers, 400, 120)
 		system.drawReadings(100)
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
@@ -267,5 +270,11 @@ func main() {
 		user.checkProofs()
 		checkReadingsTime := time.Now().UnixNano()
 		fmt.Println("check time:", float64(checkReadingsTime-startTime)/1000000000, "seconds")
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
 }

@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ing-bank/zkrp/bulletproofs"
@@ -81,40 +83,58 @@ func (c *Company) processReadings() {
 	c.commits1 = make(map[int][]byte)
 	c.commits2 = make(map[int][]byte)
 	sumR := big.NewInt(int64(0))
-	p, _ := bulletproofs.SetupGeneric(0, c.delta)
-	psum, _ := bulletproofs.SetupGeneric(c.gamma, c.delta*int64(c.nUsers))
 	for i := 0; i < c.nUsers; i++ {
 		c.sum = c.sum + c.readings[i]
-		proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(c.readings[i])), p, c.rs[i])
-		c.proofs[i], _ = json.Marshal(proof)
-		c.commits1[i], _ = json.Marshal(proof.P1.V)
-		c.commits2[i], _ = json.Marshal(proof.P2.V)
 		sumR = new(big.Int).Add(sumR, c.rs[i])
 	}
 	fmt.Println("sum:", c.sum)
+	wg := new(sync.WaitGroup)
+	for i := 0; i < c.nUsers; i++ {
+		wg.Add(1)
+		go c.generateProof(i, wg)
+	}
+
+	psum, _ := bulletproofs.SetupGeneric(c.gamma, c.delta*int64(c.nUsers))
 	sumProof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(c.sum)), psum, sumR)
 	c.sumProof, _ = json.Marshal(sumProof)
 
-	// sanity check
+	wg.Wait()
 
-	eta, _ := util.CommitG1(big.NewInt(int64(10)), big.NewInt(int64(10)), p.BP2.H)
-	zeta, _ := util.CommitG1(big.NewInt(int64(10-c.gamma)), big.NewInt(int64(10)), p.BP2.H)
-	sumV2 := new(p256.P256).Add(sumProof.P2.V, eta)
-	var (
-		cm    *p256.P256
-		cStar *p256.P256
-	)
-	_ = json.Unmarshal(c.commits2[0], &cStar)
-	for i := 1; i < c.nUsers; i++ {
-		_ = json.Unmarshal(c.commits2[i], &cm)
-		cStar = new(p256.P256).Add(cStar, cm)
-	}
-	//    _ = json.Unmarshal(c.commits2[0], &cStar)
-	//    _ = json.Unmarshal(c.commits2[1], &cm)
-	//    cStar = new(p256.P256).Add(cStar, cm)
-	cStar = new(p256.P256).Add(cStar, zeta)
+	// // sanity check
 
-	fmt.Println(sumV2.Equals(cStar))
+	// p, _ := bulletproofs.SetupGeneric(0, c.delta)
+	// eta, _ := util.CommitG1(big.NewInt(int64(10)), big.NewInt(int64(10)), p.BP2.H)
+	// zeta, _ := util.CommitG1(big.NewInt(int64(10-c.gamma)), big.NewInt(int64(10)), p.BP2.H)
+	// sumV2 := new(p256.P256).Add(sumProof.P2.V, eta)
+	// var (
+	// 	cm    *p256.P256
+	// 	cStar *p256.P256
+	// )
+	// _ = json.Unmarshal(c.commits2[0], &cStar)
+	// for i := 1; i < c.nUsers; i++ {
+	// 	_ = json.Unmarshal(c.commits2[i], &cm)
+	// 	cStar = new(p256.P256).Add(cStar, cm)
+	// }
+	// //    _ = json.Unmarshal(c.commits2[0], &cStar)
+	// //    _ = json.Unmarshal(c.commits2[1], &cm)
+	// //    cStar = new(p256.P256).Add(cStar, cm)
+	// cStar = new(p256.P256).Add(cStar, zeta)
+
+	// fmt.Println(sumV2.Equals(cStar))
+}
+
+var proofMtx sync.Mutex
+
+func (c *Company) generateProof(idx int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	p, _ := bulletproofs.SetupGeneric(0, c.delta)
+	proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(c.readings[idx])), p, c.rs[idx])
+
+	proofMtx.Lock()
+	defer proofMtx.Unlock()
+	c.proofs[idx], _ = json.Marshal(proof)
+	c.commits1[idx], _ = json.Marshal(proof.P1.V)
+	c.commits2[idx], _ = json.Marshal(proof.P2.V)
 }
 
 //func (c *Company) processReadingsMaliciously() {
@@ -333,8 +353,10 @@ func main() {
 	}
 	fmt.Println(os.Args[1])
 	if os.Args[1] == "c" {
+		nUsers, err := strconv.Atoi(os.Args[2])
+		check(err)
 		startTime := time.Now().UnixNano()
-		system := initialize(100, 500, 120)
+		system := initialize(nUsers, 500, 120)
 		system.drawReadings(100)
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
@@ -382,5 +404,11 @@ func main() {
 		user.checkProofs()
 		checkReadingsTime := time.Now().UnixNano()
 		fmt.Println("check time:", float64(checkReadingsTime-startTime)/1000000000, "seconds")
+	}
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
 	}
 }

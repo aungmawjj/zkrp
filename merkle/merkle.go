@@ -10,6 +10,8 @@ import (
 	//    "fmt"
 	//    "math"
 	"math/big"
+	"sync"
+
 	//    "math/rand"
 	"encoding/json"
 
@@ -53,6 +55,60 @@ func buildLeaf(reading int, seed *big.Int, d int64) *Node {
 	return n
 }
 
+// func buildIntermediate(ns []*Node, vs []int, ls []int, rs []*big.Int, d int64) *Node {
+// 	var nodes []*Node
+// 	var values []int
+// 	var sizes []int
+// 	var seeds []*big.Int
+// 	var sumV int
+// 	var newL int
+// 	var sumR *big.Int
+// 	for i := 0; i < len(ns); i += 2 {
+// 		var leftNode, rightNode *Node
+// 		if i+1 == len(ns) {
+// 			nodes = append(nodes, ns[i])
+// 			values = append(values, vs[i])
+// 			sizes = append(sizes, ls[i])
+// 			seeds = append(seeds, rs[i])
+// 			if len(ns) == 2 {
+// 				return ns[i]
+// 			}
+// 		} else {
+// 			sumV = vs[i] + vs[i+1]
+// 			sumR = new(big.Int).Add(rs[i], rs[i+1])
+// 			leftNode = ns[i]
+// 			rightNode = ns[i+1]
+// 			newL = ls[i] + ls[i+1]
+// 			height := leftNode.Height + 1
+// 			p, _ := bulletproofs.SetupGeneric(0, d*int64(newL))
+// 			proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(sumV)), p, sumR)
+// 			nodeC1, _ := json.Marshal(proof.P1.V)
+// 			nodeC2, _ := json.Marshal(proof.P2.V)
+// 			nodePi, _ := json.Marshal(proof)
+// 			n := &Node{
+// 				Left:   leftNode,
+// 				Right:  rightNode,
+// 				C1:     nodeC1,
+// 				C2:     nodeC2,
+// 				Pi:     nodePi,
+// 				L:      newL,
+// 				IsLeaf: false,
+// 				Height: height,
+// 			}
+// 			nodes = append(nodes, n)
+// 			values = append(values, sumV)
+// 			sizes = append(sizes, newL)
+// 			seeds = append(seeds, sumR)
+// 			leftNode.Parent = n
+// 			rightNode.Parent = n
+// 			if len(ns) == 2 {
+// 				return n
+// 			}
+// 		}
+// 	}
+// 	return buildIntermediate(nodes, values, sizes, seeds, d)
+// }
+
 func buildIntermediate(ns []*Node, vs []int, ls []int, rs []*big.Int, d int64) *Node {
 	var nodes []*Node
 	var values []int
@@ -61,6 +117,7 @@ func buildIntermediate(ns []*Node, vs []int, ls []int, rs []*big.Int, d int64) *
 	var sumV int
 	var newL int
 	var sumR *big.Int
+	wg := new(sync.WaitGroup)
 	for i := 0; i < len(ns); i += 2 {
 		var leftNode, rightNode *Node
 		if i+1 == len(ns) {
@@ -78,17 +135,9 @@ func buildIntermediate(ns []*Node, vs []int, ls []int, rs []*big.Int, d int64) *
 			rightNode = ns[i+1]
 			newL = ls[i] + ls[i+1]
 			height := leftNode.Height + 1
-			p, _ := bulletproofs.SetupGeneric(0, d*int64(newL))
-			proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(sumV)), p, sumR)
-			nodeC1, _ := json.Marshal(proof.P1.V)
-			nodeC2, _ := json.Marshal(proof.P2.V)
-			nodePi, _ := json.Marshal(proof)
 			n := &Node{
 				Left:   leftNode,
 				Right:  rightNode,
-				C1:     nodeC1,
-				C2:     nodeC2,
-				Pi:     nodePi,
 				L:      newL,
 				IsLeaf: false,
 				Height: height,
@@ -99,11 +148,21 @@ func buildIntermediate(ns []*Node, vs []int, ls []int, rs []*big.Int, d int64) *
 			seeds = append(seeds, sumR)
 			leftNode.Parent = n
 			rightNode.Parent = n
+			wg.Add(1)
+			go func(n *Node, sumV int, sumR *big.Int) {
+				defer wg.Done()
+				p, _ := bulletproofs.SetupGeneric(0, d*int64(n.L))
+				proof, _ := bulletproofs.ProveGeneric(big.NewInt(int64(sumV)), p, sumR)
+				n.C1, _ = json.Marshal(proof.P1.V)
+				n.C2, _ = json.Marshal(proof.P2.V)
+				n.Pi, _ = json.Marshal(proof)
+			}(n, sumV, sumR)
 			if len(ns) == 2 {
 				return n
 			}
 		}
 	}
+	wg.Wait()
 	return buildIntermediate(nodes, values, sizes, seeds, d)
 }
 
@@ -280,14 +339,24 @@ func (n *Node) BuildTree(vs map[int]int, rs map[int]*big.Int, d int64) *Node {
 	values := make([]int, len(vs))
 	sizes := make([]int, len(vs))
 	seeds := make([]*big.Int, len(vs))
+
+	nch := make(chan *Node, len(vs))
 	for k := range vs {
 		values[k] = vs[k]
 		seeds[k] = rs[k]
-		n := buildLeaf(vs[k], rs[k], d)
-		leaves[k] = n
 		sizes[k] = 1
-		leaves[k].Index = k
+		go func(idx int) {
+			n := buildLeaf(vs[idx], rs[idx], d)
+			n.Index = idx
+			nch <- n
+		}(k)
 	}
+
+	for range vs {
+		n := <-nch
+		leaves[n.Index] = n
+	}
+
 	root := buildIntermediate(leaves, values, sizes, seeds, d)
 	// verify full tree
 	//    valid := VerifyTree(root)
