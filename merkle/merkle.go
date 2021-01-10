@@ -209,44 +209,73 @@ func (p *Path) VerifyStructure(delta int64) bool {
 }
 
 func (p *Path) VerifyProofs() bool {
+	var mtx sync.Mutex
+	var wg sync.WaitGroup
 
-	var (
-		proof   bulletproofs.ProofBPRP
-		commit1 *p256.P256
-		commit2 *p256.P256
-	)
+	valid := true
 
 	for i := 0; i < len(p.Core); i++ {
-		_ = json.Unmarshal(p.Core[i].Pi, &proof)
-		_ = json.Unmarshal(p.Core[i].C1, &commit1)
-		_ = json.Unmarshal(p.Core[i].C2, &commit2)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var (
+				proof   bulletproofs.ProofBPRP
+				commit1 *p256.P256
+				commit2 *p256.P256
+			)
 
-		ok1 := proof.P1.V.Equals(commit1)
-		ok2 := proof.P2.V.Equals(commit2)
-		ok3, _ := proof.Verify()
+			_ = json.Unmarshal(p.Core[i].Pi, &proof)
+			_ = json.Unmarshal(p.Core[i].C1, &commit1)
+			_ = json.Unmarshal(p.Core[i].C2, &commit2)
 
-		//fmt.Println(ok1, ok2, ok3)
+			ok1 := proof.P1.V.Equals(commit1)
+			ok2 := proof.P2.V.Equals(commit2)
+			ok3, _ := proof.Verify()
 
-		if !(ok1 && ok2 && ok3) {
-			return false
-		}
+			//fmt.Println(ok1, ok2, ok3)
+
+			mtx.Lock()
+			defer mtx.Unlock()
+			if !(ok1 && ok2 && ok3) {
+				valid = false
+			}
+		}(i)
 	}
+	wg.Wait()
+
+	if !valid {
+		return false
+	}
+
 	for i := 0; i < len(p.Edge); i++ {
-		_ = json.Unmarshal(p.Edge[i].Pi, &proof)
-		_ = json.Unmarshal(p.Edge[i].C1, &commit1)
-		_ = json.Unmarshal(p.Edge[i].C2, &commit2)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var (
+				proof   bulletproofs.ProofBPRP
+				commit1 *p256.P256
+				commit2 *p256.P256
+			)
 
-		ok1 := proof.P1.V.Equals(commit1)
-		ok2 := proof.P2.V.Equals(commit2)
-		ok3, _ := proof.Verify()
+			_ = json.Unmarshal(p.Edge[i].Pi, &proof)
+			_ = json.Unmarshal(p.Edge[i].C1, &commit1)
+			_ = json.Unmarshal(p.Edge[i].C2, &commit2)
 
-		//fmt.Println(ok1, ok2, ok3)
+			ok1 := proof.P1.V.Equals(commit1)
+			ok2 := proof.P2.V.Equals(commit2)
+			ok3, _ := proof.Verify()
 
-		if !(ok1 && ok2 && ok3) {
-			return false
-		}
+			//fmt.Println(ok1, ok2, ok3)
+
+			mtx.Lock()
+			defer mtx.Unlock()
+			if !(ok1 && ok2 && ok3) {
+				valid = false
+			}
+		}(i)
 	}
-	return true
+	wg.Wait()
+	return valid
 }
 
 func (n *Node) CopyNode() *Node {
