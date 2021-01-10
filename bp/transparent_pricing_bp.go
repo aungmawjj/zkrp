@@ -260,32 +260,42 @@ func (u *User) checkSumProof() {
 }
 
 func (u *User) checkRangeProofs() {
-	var (
-		proof   bulletproofs.ProofBPRP
-		commit1 *p256.P256
-		commit2 *p256.P256
-	)
+	var mtx sync.Mutex
+	var wg sync.WaitGroup
 	noFailures := true
 	for i := 0; i < len(u.proofs); i++ {
-		_ = json.Unmarshal(u.proofs[i], &proof)
-		_ = json.Unmarshal(u.commits1[i], &commit1)
-		_ = json.Unmarshal(u.commits2[i], &commit2)
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			var (
+				proof   bulletproofs.ProofBPRP
+				commit1 *p256.P256
+				commit2 *p256.P256
+			)
+			_ = json.Unmarshal(u.proofs[i], &proof)
+			_ = json.Unmarshal(u.commits1[i], &commit1)
+			_ = json.Unmarshal(u.commits2[i], &commit2)
 
-		ok1 := proof.P1.V.Equals(commit1)
-		if !ok1 {
-			fmt.Println("failure in check 3 for user", u.idx, ": commitment 1 did not match")
-		}
-		ok2 := proof.P2.V.Equals(commit2)
-		if !ok2 {
-			fmt.Println("failure in check 3 for user", u.idx, ": commitment 2 did not match")
-		}
-		ok3, _ := proof.Verify()
-		if !ok3 {
-			fmt.Println("failure in check 3 for user", u.idx, ": invalid proof")
-		}
-
-		noFailures = noFailures && ok1 && ok2 && ok3
+			ok1 := proof.P1.V.Equals(commit1)
+			if !ok1 {
+				fmt.Println("failure in check 3 for user", u.idx, ": commitment 1 did not match")
+			}
+			ok2 := proof.P2.V.Equals(commit2)
+			if !ok2 {
+				fmt.Println("failure in check 3 for user", u.idx, ": commitment 2 did not match")
+			}
+			ok3, _ := proof.Verify()
+			if !ok3 {
+				fmt.Println("failure in check 3 for user", u.idx, ": invalid proof")
+			}
+			mtx.Lock()
+			defer mtx.Unlock()
+			if noFailures {
+				noFailures = noFailures && ok1 && ok2 && ok3
+			}
+		}(i)
 	}
+	wg.Wait()
 
 	if noFailures {
 		fmt.Println("check 3 for user", u.idx, "succeeded")
