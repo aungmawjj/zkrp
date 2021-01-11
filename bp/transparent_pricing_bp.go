@@ -371,7 +371,7 @@ func main() {
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
 		system.company.processReadings()
-		system.shareProofData()
+		// system.shareProofData()
 		processReadingsTime := time.Now().UnixNano()
 		fmt.Println("sharing:", float64(shareReadingsTime-startTime)/1000000000, "seconds")
 		fmt.Println("processing:", float64(processReadingsTime-shareReadingsTime)/1000000000, "seconds")
