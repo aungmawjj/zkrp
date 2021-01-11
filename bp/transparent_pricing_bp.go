@@ -159,9 +159,10 @@ func (c *Company) generateProof(idx int, wg *sync.WaitGroup) {
 //}
 
 func (s *System) shareProofData() {
-	for i := 0; i < s.company.nUsers; i++ {
-		s.company.shareProofData(s.users[i])
-	}
+	s.company.shareProofData(s.users[0])
+	// for i := 0; i < s.company.nUsers; i++ {
+	// 	s.company.shareProofData(s.users[i])
+	// }
 }
 
 func (c *Company) shareProofData(u *User) {
@@ -371,7 +372,7 @@ func main() {
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
 		system.company.processReadings()
-		// system.shareProofData()
+		system.shareProofData()
 		processReadingsTime := time.Now().UnixNano()
 		fmt.Println("sharing:", float64(shareReadingsTime-startTime)/1000000000, "seconds")
 		fmt.Println("processing:", float64(processReadingsTime-shareReadingsTime)/1000000000, "seconds")

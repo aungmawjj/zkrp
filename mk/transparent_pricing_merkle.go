@@ -86,12 +86,16 @@ func (c *Company) processReadings() {
 }
 
 func (s *System) shareProofData() {
-	for i := 0; i < s.company.nUsers; i++ {
-		node := s.company.treeRoot.GetLeaf(i)
-		path := s.company.treeRoot.MerklePath(node)
-		s.users[i].path = path
-		s.users[i].sumProof = s.company.sumProof
-	}
+	node := s.company.treeRoot.GetLeaf(0)
+	path := s.company.treeRoot.MerklePath(node)
+	s.users[0].path = path
+	s.users[0].sumProof = s.company.sumProof
+	// for i := 0; i < s.company.nUsers; i++ {
+	// 	node := s.company.treeRoot.GetLeaf(i)
+	// 	path := s.company.treeRoot.MerklePath(node)
+	// 	s.users[i].path = path
+	// 	s.users[i].sumProof = s.company.sumProof
+	// }
 }
 
 func (u *User) checkCommitment() {
@@ -230,7 +234,7 @@ func main() {
 		system.shareReadings()
 		shareReadingsTime := time.Now().UnixNano()
 		system.company.processReadings()
-		// system.shareProofData()
+		system.shareProofData()
 		processReadingsTime := time.Now().UnixNano()
 		fmt.Println("sharing:", float64(shareReadingsTime-startTime)/1000000000, "seconds")
 		fmt.Println("processing:", float64(processReadingsTime-shareReadingsTime)/1000000000, "seconds")
