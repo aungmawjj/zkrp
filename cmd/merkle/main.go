@@ -205,7 +205,6 @@ func (s *System) checkProofsAllUsers() {
 func (u *User) checkProofs() {
 	u.checkCommitment()
 	u.checkSumProof()
-	u.checkRangeProofs()
 }
 
 func initialize(n int, gamma int64, delta int64) System {

@@ -42,7 +42,7 @@ type UserJSON struct {
 	R        *big.Int
 	Commits1 map[int][]byte
 	Commits2 map[int][]byte
-	Proofs   map[int][]byte
+	// Proofs   map[int][]byte
 	SumProof []byte
 }
 
@@ -318,7 +318,6 @@ func (s *System) checkProofsAllUsers() {
 func (u *User) checkProofs() {
 	u.checkCommitment()
 	u.checkSumProof()
-	u.checkRangeProofs()
 }
 
 func initialize(n int, gamma int64, delta int64) System {
@@ -386,7 +385,6 @@ func main() {
 			R:        system.users[0].r,
 			Commits1: system.users[0].commits1,
 			Commits2: system.users[0].commits2,
-			Proofs:   system.users[0].proofs,
 			SumProof: system.users[0].sumProof,
 		}
 		f, _ := os.Create("user.json")
@@ -408,7 +406,6 @@ func main() {
 			r:        uj.R,
 			commits1: uj.Commits1,
 			commits2: uj.Commits2,
-			proofs:   uj.Proofs,
 			sumProof: uj.SumProof,
 		}
 		startTime := time.Now().UnixNano()

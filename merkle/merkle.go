@@ -35,7 +35,7 @@ type Node struct {
 	L      int
 	C1     []byte
 	C2     []byte
-	Pi     []byte
+	Pi     []byte `json:"-"`
 }
 
 func buildLeaf(reading int, seed *big.Int, d int64) *Node {
